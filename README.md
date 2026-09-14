@@ -20,3 +20,15 @@ All app assets live under `assets/`. The shipped files are in `assets/character/
 The original source videos, mouth sprites, and NPZ tracking files are in `assets/source/` for regeneration. They are not included in the Flutter asset bundle.
 
 The launcher icon and splash screen are Flutter defaults for this development build.
+
+## Android mouth synchronization
+
+Android uses a native stage that draws the decoded video texture and the mouth
+sprite in one Android canvas pass. The stage pairs each updated texture frame with
+its decoded presentation timestamp, selects the matching quad, and maps the sprite
+with the same perspective warp used by `motionpngtuber`. This keeps the face and
+mouth on the same displayed frame. Other platforms retain the Flutter renderer.
+
+The bundled video, JSON track and five sprites match the `sexy_two` source set.
+The JSON already contains calibrated quads (`calibrationApplied: false` prevents
+applying the recorded calibration again).

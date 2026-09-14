@@ -33,4 +33,27 @@ void main() {
       throwsFormatException,
     );
   });
+
+  test('decoder timestamps select the correct 24 fps quad across a loop', () {
+    final track = MouthTrackData.decode(
+      json.replaceFirst('"fps": 2', '"fps": 24'),
+    );
+    for (final us in [41666, 41667]) {
+      expect(
+        track.frameAt(Duration(microseconds: us), presentationTimestamp: true),
+        same(track.frames[1]),
+      );
+    }
+    expect(
+      track.frameAt(Duration.zero, presentationTimestamp: true),
+      same(track.frames[0]),
+    );
+    expect(
+      track.frameAt(
+        const Duration(microseconds: 83333),
+        presentationTimestamp: true,
+      ),
+      same(track.frames[0]),
+    );
+  });
 }

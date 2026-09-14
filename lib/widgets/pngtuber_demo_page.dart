@@ -359,12 +359,10 @@ class _DiagnosticsPage extends StatelessWidget {
             OutlinedButton.icon(
               onPressed: controller.toggleVideo,
               icon: Icon(
-                controller.video!.value.isPlaying
-                    ? Icons.pause
-                    : Icons.play_arrow,
+                controller.isVideoPlaying ? Icons.pause : Icons.play_arrow,
               ),
               label: Text(
-                controller.video!.value.isPlaying ? 'Pause loop' : 'Play loop',
+                controller.isVideoPlaying ? 'Pause loop' : 'Play loop',
               ),
             ),
             const SizedBox(height: 10),

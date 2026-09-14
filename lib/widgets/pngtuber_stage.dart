@@ -2,8 +2,10 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 
+import '../assets_path.dart';
 import '../pngtuber/pngtuber_controller.dart';
 import '../pngtuber/pngtuber_math.dart';
 
@@ -14,6 +16,19 @@ class PNGTuberStage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (controller.usesNativeStage) {
+      return AndroidView(
+        viewType: 'pngtuber/native-stage',
+        creationParams: <String, String>{
+          'video': AssetsPath.characterVideo,
+          'track': AssetsPath.mouthTrack,
+          for (final state in MouthState.values)
+            'mouth/${state.name}': AssetsPath.mouthSprite(state.name),
+        },
+        creationParamsCodec: const StandardMessageCodec(),
+        onPlatformViewCreated: controller.attachNativeStage,
+      );
+    }
     final video = controller.video!;
     final track = controller.track!;
     return ColoredBox(
@@ -45,7 +60,7 @@ class MouthSpritePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final track = controller.track!;
-    final frame = track.frameAt(controller.renderPosition);
+    final frame = controller.renderFrame;
     if (!frame.valid) return;
 
     final quad = applyCalibration(

@@ -35,6 +35,10 @@ class PNGTuberController extends ChangeNotifier {
   VideoPlayerController? video;
   MouthTrackData? track;
   StreamSubscription<Uint8List>? _audioSubscription;
+  MethodChannel? _nativeStageChannel;
+  bool _nativePlaying = true;
+  bool get usesNativeStage =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
   Timer? _frameTimer;
   Object? fatalError;
   String? statusMessage;
@@ -65,13 +69,18 @@ class PNGTuberController extends ChangeNotifier {
   }
 
   Set<MouthState> get availableStates => sprites.keys.toSet();
+  MouthTrackFrame get renderFrame => track!.frameAt(
+    renderPosition,
+    presentationTimestamp: false,
+  );
   Duration get renderPosition {
+    if (usesNativeStage) return Duration.zero;
     final controller = video;
     if (controller == null) return Duration.zero;
     return _videoClock.positionAt(
       time: DateTime.now(),
       duration: controller.value.duration,
-      playing: controller.value.isPlaying,
+      playing: controller.value.isPlaying && !controller.value.isBuffering,
       speed: controller.value.playbackSpeed,
     );
   }
@@ -79,8 +88,27 @@ class PNGTuberController extends ChangeNotifier {
   bool get ready =>
       !loading &&
       fatalError == null &&
-      video?.value.isInitialized == true &&
+      (usesNativeStage || video?.value.isInitialized == true) &&
       track != null;
+
+  bool get isVideoPlaying =>
+      usesNativeStage ? _nativePlaying : video?.value.isPlaying == true;
+
+  void attachNativeStage(int viewId) {
+    _nativeStageChannel = MethodChannel('pngtuber/native-stage/$viewId');
+    unawaited(_sendNativeMouthState());
+  }
+
+  Future<void> _sendNativeMouthState() async {
+    try {
+      await _nativeStageChannel?.invokeMethod<void>(
+        'setMouthState',
+        <String, Object>{'state': mouthState.name},
+      );
+    } catch (_) {
+      // The platform view may be in the process of being disposed.
+    }
+  }
 
   Future<void> initialize() async {
     try {
@@ -104,27 +132,30 @@ class PNGTuberController extends ChangeNotifier {
         throw StateError('closed.png and open.png are required.');
       }
 
-      // The video is intentionally silent, but Android's video player still
-      // requests exclusive audio focus by default. The recorder requests
-      // audio focus when live lip-sync starts, which would otherwise pause
-      // the video while the mouth sprites continue to animate.
-      final controller = VideoPlayerController.asset(
-        AssetsPath.characterVideo,
-        videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
-      );
-      await controller.initialize();
-      await controller.setLooping(true);
-      await controller.setVolume(0);
-      video = controller;
-      controller.addListener(_handleVideoUpdate);
-      await controller.play();
-      final initialPosition = await controller.position ?? Duration.zero;
-      _lastObservedVideoPosition = initialPosition;
-      _videoClock.sync(initialPosition, DateTime.now());
-      final frameInterval = Duration(
-        microseconds: (Duration.microsecondsPerSecond / track!.fps).round(),
-      );
-      _frameTimer = Timer.periodic(frameInterval, (_) => renderSignal.value++);
+      if (!usesNativeStage) {
+        // Android uses the native stage so the video texture and mouth are
+        // drawn in the same canvas pass. Other platforms retain video_player.
+        final controller = VideoPlayerController.asset(
+          AssetsPath.characterVideo,
+          videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
+        );
+        await controller.initialize();
+        await controller.setLooping(true);
+        await controller.setVolume(0);
+        video = controller;
+        controller.addListener(_handleVideoUpdate);
+        await controller.play();
+        final initialPosition = await controller.position ?? Duration.zero;
+        _lastObservedVideoPosition = initialPosition;
+        _videoClock.sync(initialPosition, DateTime.now());
+        final frameInterval = Duration(
+          microseconds: (Duration.microsecondsPerSecond / track!.fps).round(),
+        );
+        _frameTimer = Timer.periodic(
+          frameInterval,
+          (_) => renderSignal.value++,
+        );
+      }
     } catch (caught) {
       fatalError = caught;
     } finally {
@@ -284,6 +315,7 @@ class PNGTuberController extends ChangeNotifier {
       _transitionStarted = now;
       mouthStateSignal.value = mouthState;
       renderSignal.value++;
+      if (usesNativeStage) unawaited(_sendNativeMouthState());
     }
   }
 
@@ -310,6 +342,16 @@ class PNGTuberController extends ChangeNotifier {
   }
 
   Future<void> toggleVideo() async {
+    if (usesNativeStage) {
+      try {
+        final playing = await _nativeStageChannel?.invokeMethod<bool>('toggle');
+        if (playing != null) _nativePlaying = playing;
+      } catch (caught) {
+        statusMessage = 'Video control failed: $caught';
+      }
+      notifyListeners();
+      return;
+    }
     final controller = video;
     if (controller == null) return;
     if (controller.value.isPlaying) {

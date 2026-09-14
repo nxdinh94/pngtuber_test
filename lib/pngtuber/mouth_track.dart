@@ -120,11 +120,16 @@ class MouthTrackData {
     );
   }
 
-  MouthTrackFrame frameAt(Duration position) {
+  MouthTrackFrame frameAt(
+    Duration position, {
+    bool presentationTimestamp = false,
+  }) {
+    final frame =
+        position.inMicroseconds * fps / Duration.microsecondsPerSecond;
+    // Decoder PTS is rounded to microseconds (24 fps frame 1 is 41666 us).
+    // Flooring it would select the previous quad on many frame boundaries.
     final index =
-        (position.inMicroseconds * fps / Duration.microsecondsPerSecond)
-            .floor() %
-        frames.length;
+        (presentationTimestamp ? frame.round() : frame.floor()) % frames.length;
     return frames[index];
   }
 }
