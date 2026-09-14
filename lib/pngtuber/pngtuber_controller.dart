@@ -16,7 +16,8 @@ import 'mouth_transition_gate.dart';
 import 'video_playback_clock.dart';
 
 class PNGTuberController extends ChangeNotifier {
-  PNGTuberController();
+  PNGTuberController({CharacterAsset? initialCharacter})
+    : character = initialCharacter ?? AssetsPath.defaultCharacter;
 
   static const mouthTransitionDuration = Duration(milliseconds: 120);
 
@@ -32,6 +33,7 @@ class PNGTuberController extends ChangeNotifier {
     MouthState.closed,
   );
 
+  CharacterAsset character;
   VideoPlayerController? video;
   MouthTrackData? track;
   StreamSubscription<Uint8List>? _audioSubscription;
@@ -117,16 +119,46 @@ class PNGTuberController extends ChangeNotifier {
     }
   }
 
+  Future<void> selectCharacter(CharacterAsset next) async {
+    if (next.id == character.id || loading) return;
+
+    loading = true;
+    fatalError = null;
+    statusMessage = null;
+    _frameTimer?.cancel();
+    _frameTimer = null;
+
+    final oldVideo = video;
+    video = null;
+    oldVideo?.removeListener(_handleVideoUpdate);
+    await oldVideo?.dispose();
+
+    _nativeStageChannel?.setMethodCallHandler(null);
+    _nativeStageChannel = null;
+    _nativePlaying = true;
+    for (final image in sprites.values) {
+      image.dispose();
+    }
+    sprites.clear();
+    track = null;
+    character = next;
+    mouthState = MouthState.closed;
+    previousMouthState = MouthState.closed;
+    mouthStateSignal.value = MouthState.closed;
+    renderSignal.value++;
+    notifyListeners();
+
+    await initialize();
+  }
+
   Future<void> initialize() async {
     try {
       track = MouthTrackData.decode(
-        await rootBundle.loadString(AssetsPath.mouthTrack),
+        await rootBundle.loadString(character.track),
       );
       for (final state in MouthState.values) {
         try {
-          final data = await rootBundle.load(
-            AssetsPath.mouthSprite(state.name),
-          );
+          final data = await rootBundle.load(character.mouthSprite(state.name));
           sprites[state] = await _decodeImage(
             data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
           );
@@ -143,7 +175,7 @@ class PNGTuberController extends ChangeNotifier {
         // Android uses the native stage so the video texture and mouth are
         // drawn in the same canvas pass. Other platforms retain video_player.
         final controller = VideoPlayerController.asset(
-          AssetsPath.characterVideo,
+          character.video,
           videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
         );
         await controller.initialize();

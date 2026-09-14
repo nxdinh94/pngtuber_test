@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../assets_path.dart';
 import '../pngtuber/pngtuber_controller.dart';
 import '../pngtuber/pngtuber_math.dart';
 import 'pngtuber_stage.dart';
@@ -38,6 +39,20 @@ class _PNGTuberDemoPageState extends State<PNGTuberDemoPage> {
       ),
     );
     if (mounted) setState(() {});
+  }
+
+  Future<void> _openCharacterPicker() async {
+    final selected = await showModalBottomSheet<CharacterAsset>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => _CharacterPickerSheet(
+        characters: AssetsPath.characters,
+        selectedId: _controller.character.id,
+      ),
+    );
+    if (!mounted || selected == null) return;
+    await _controller.selectCharacter(selected);
   }
 
   void _resetView() => _viewTransform.value = Matrix4.identity();
@@ -79,7 +94,10 @@ class _PNGTuberDemoPageState extends State<PNGTuberDemoPage> {
               top: 4,
               left: 8,
               right: 8,
-              child: _TopBar(onOpenDiagnostics: _openDiagnostics),
+              child: _TopBar(
+                onOpenCharacters: _openCharacterPicker,
+                onOpenDiagnostics: _openDiagnostics,
+              ),
             ),
             Positioned(
               left: 16,
@@ -95,8 +113,12 @@ class _PNGTuberDemoPageState extends State<PNGTuberDemoPage> {
 }
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.onOpenDiagnostics});
+  const _TopBar({
+    required this.onOpenCharacters,
+    required this.onOpenDiagnostics,
+  });
 
+  final VoidCallback onOpenCharacters;
   final VoidCallback onOpenDiagnostics;
 
   @override
@@ -123,12 +145,143 @@ class _TopBar extends StatelessWidget {
             shape: BoxShape.circle,
           ),
           child: IconButton(
+            tooltip: 'Choose character',
+            onPressed: onOpenCharacters,
+            icon: const Icon(Icons.people_alt_outlined),
+          ),
+        ),
+        const SizedBox(width: 8),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.55),
+            shape: BoxShape.circle,
+          ),
+          child: IconButton(
             tooltip: 'Open diagnostics',
             onPressed: onOpenDiagnostics,
             icon: const Icon(Icons.tune),
           ),
         ),
       ],
+    );
+  }
+}
+
+class _CharacterPickerSheet extends StatelessWidget {
+  const _CharacterPickerSheet({
+    required this.characters,
+    required this.selectedId,
+  });
+
+  final List<CharacterAsset> characters;
+  final String selectedId;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Choose a character',
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Switch the character while keeping your lip-sync settings.',
+              style: TextStyle(color: colors.onSurfaceVariant),
+            ),
+            const SizedBox(height: 16),
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: characters.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
+              itemBuilder: (context, index) {
+                final character = characters[index];
+                final selected = character.id == selectedId;
+                return Material(
+                  color: selected
+                      ? colors.primary.withValues(alpha: 0.14)
+                      : colors.surfaceContainerHighest.withValues(alpha: 0.45),
+                  borderRadius: BorderRadius.circular(18),
+                  child: ListTile(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    leading: _CharacterThumbnail(character: character),
+                    title: Text(
+                      character.displayName,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    subtitle: Text(
+                      selected
+                          ? 'Currently selected'
+                          : 'Tap to use this character',
+                    ),
+                    trailing: Icon(
+                      selected
+                          ? Icons.check_circle
+                          : Icons.radio_button_unchecked,
+                      color: selected
+                          ? colors.primary
+                          : colors.onSurfaceVariant,
+                    ),
+                    onTap: () => Navigator.of(context).pop(character),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CharacterThumbnail extends StatelessWidget {
+  const _CharacterThumbnail({required this.character});
+
+  final CharacterAsset character;
+
+  @override
+  Widget build(BuildContext context) {
+    final thumbnail = character.thumbnail;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: SizedBox(
+        width: 52,
+        height: 64,
+        child: thumbnail == null
+            ? ColoredBox(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                child: Icon(
+                  Icons.person_outline,
+                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                ),
+              )
+            : Image.asset(
+                thumbnail,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => ColoredBox(
+                  color: Theme.of(context).colorScheme.primaryContainer,
+                  child: Icon(
+                    Icons.person_outline,
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  ),
+                ),
+              ),
+      ),
     );
   }
 }

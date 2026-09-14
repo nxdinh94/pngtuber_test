@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 
-import '../assets_path.dart';
 import '../pngtuber/pngtuber_controller.dart';
 import '../pngtuber/pngtuber_math.dart';
 
@@ -18,12 +17,13 @@ class PNGTuberStage extends StatelessWidget {
   Widget build(BuildContext context) {
     if (controller.usesNativeStage) {
       return AndroidView(
+        key: ValueKey<String>(controller.character.id),
         viewType: 'pngtuber/native-stage',
         creationParams: <String, String>{
-          'video': AssetsPath.characterVideo,
-          'track': AssetsPath.mouthTrack,
+          'video': controller.character.video,
+          'track': controller.character.track,
           for (final state in MouthState.values)
-            'mouth/${state.name}': AssetsPath.mouthSprite(state.name),
+            'mouth/${state.name}': controller.character.mouthSprite(state.name),
         },
         creationParamsCodec: const StandardMessageCodec(),
         onPlatformViewCreated: controller.attachNativeStage,
