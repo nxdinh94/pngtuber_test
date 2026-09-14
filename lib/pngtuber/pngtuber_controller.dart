@@ -69,10 +69,8 @@ class PNGTuberController extends ChangeNotifier {
   }
 
   Set<MouthState> get availableStates => sprites.keys.toSet();
-  MouthTrackFrame get renderFrame => track!.frameAt(
-    renderPosition,
-    presentationTimestamp: false,
-  );
+  MouthTrackFrame get renderFrame =>
+      track!.frameAt(renderPosition, presentationTimestamp: false);
   Duration get renderPosition {
     if (usesNativeStage) return Duration.zero;
     final controller = video;
@@ -95,7 +93,16 @@ class PNGTuberController extends ChangeNotifier {
       usesNativeStage ? _nativePlaying : video?.value.isPlaying == true;
 
   void attachNativeStage(int viewId) {
-    _nativeStageChannel = MethodChannel('pngtuber/native-stage/$viewId');
+    final channel = MethodChannel('pngtuber/native-stage/$viewId');
+    channel.setMethodCallHandler((call) async {
+      if (call.method == 'error') {
+        final message = call.arguments?.toString() ?? 'Video playback failed.';
+        statusMessage = 'Character video failed: $message';
+        notifyListeners();
+      }
+      return null;
+    });
+    _nativeStageChannel = channel;
     unawaited(_sendNativeMouthState());
   }
 
@@ -371,6 +378,7 @@ class PNGTuberController extends ChangeNotifier {
   @override
   void dispose() {
     _frameTimer?.cancel();
+    _nativeStageChannel?.setMethodCallHandler(null);
     renderSignal.dispose();
     volumeSignal.dispose();
     mouthStateSignal.dispose();

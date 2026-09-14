@@ -30,5 +30,7 @@ with the same perspective warp used by `motionpngtuber`. This keeps the face and
 mouth on the same displayed frame. Other platforms retain the Flutter renderer.
 
 The bundled video, JSON track and five sprites match the `sexy_two` source set.
+The downloaded mouthless source is MPEG-4 Part 2; the bundled loop is re-encoded
+as H.264 (`avc1`) for Android decoder compatibility.
 The JSON already contains calibrated quads (`calibrationApplied: false` prevents
 applying the recorded calibration again).

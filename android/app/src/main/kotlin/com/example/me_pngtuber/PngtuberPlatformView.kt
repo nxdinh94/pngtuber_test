@@ -60,6 +60,7 @@ class PngtuberPlatformView(
     private var previousState = "closed"
     private var transitionStartedNs = 0L
     private var playing = true
+    private var playerError: String? = null
 
     init {
         val asset = params["video"] as? String
@@ -121,6 +122,7 @@ class PngtuberPlatformView(
             "setMouthState" -> {
                 setMouthState(call.argument<String>("state") ?: "closed")
                 result.success(null)
+                playerError?.let { channel.invokeMethod("error", it) }
             }
             "toggle" -> {
                 if (player.isPlaying) {
@@ -208,7 +210,9 @@ class PngtuberPlatformView(
     }
 
     override fun onPlayerError(error: PlaybackException) {
-        channel.invokeMethod("error", error.message ?: "Video playback failed")
+        val message = "${error.errorCodeName}: ${error.message ?: "Video playback failed"}"
+        playerError = message
+        channel.invokeMethod("error", message)
     }
 
     private fun drawMouth(canvas: Canvas) {
