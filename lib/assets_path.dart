@@ -57,11 +57,21 @@ abstract final class AssetsPath {
     thumbnail: 'assets/characters/sexy_four/thumbnail.png',
   );
 
+  static const sexyEight = CharacterAsset(
+    id: 'sexy_eight',
+    displayName: 'Sexy Eight',
+    video: 'assets/characters/sexy_eight/loop_mouthless_h264.mp4',
+    track: 'assets/characters/sexy_eight/mouth_track.json',
+    mouthDirectory: 'assets/characters/sexy_eight/mouth',
+    thumbnail: 'assets/characters/sexy_eight/thumbnail.png',
+  );
+
   static const characters = <CharacterAsset>[
     defaultCharacter,
     sexyFive,
     sexyOne,
     sexyFour,
+    sexyEight,
   ];
 
   // Keep the original names available to callers that only need the default.

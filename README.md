@@ -32,6 +32,8 @@ mouth on the same displayed frame. Other platforms retain the Flutter renderer.
 The default bundled video, JSON track and five sprites match the `sexy_seven`
 source set. Additional selectable character sets live under
 `assets/characters/`.
+The catalog currently includes `sexy_five`, `sexy_one`, `sexy_four`, and
+`sexy_eight` in addition to the default `sexy_seven` set.
 The downloaded mouthless source is MPEG-4 Part 2; the bundled loop is re-encoded
 as H.264 (`avc1`) for Android decoder compatibility.
 The JSON already contains calibrated quads (`calibrationApplied: false` prevents
