@@ -8,7 +8,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test('bundled character assets match the renderer contract', () async {
-    expect(AssetsPath.characters, hasLength(5));
+    expect(AssetsPath.characters, hasLength(7));
     for (final character in AssetsPath.characters) {
       final track = MouthTrackData.decode(
         await rootBundle.loadString(character.track),

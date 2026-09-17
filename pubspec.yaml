@@ -70,6 +70,10 @@ flutter:
     - assets/characters/sexy_four/mouth/
     - assets/characters/sexy_eight/
     - assets/characters/sexy_eight/mouth/
+    - assets/characters/sexy_nine/
+    - assets/characters/sexy_nine/mouth/
+    - assets/characters/boy_one/
+    - assets/characters/boy_one/mouth/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

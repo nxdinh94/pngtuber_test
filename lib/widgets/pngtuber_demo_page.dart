@@ -179,72 +179,140 @@ class _CharacterPickerSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Choose a character',
-              style: Theme.of(
-                context,
-              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Switch the character while keeping your lip-sync settings.',
-              style: TextStyle(color: colors.onSurfaceVariant),
-            ),
-            const SizedBox(height: 16),
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: characters.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 8),
-              itemBuilder: (context, index) {
-                final character = characters[index];
-                final selected = character.id == selectedId;
-                return Material(
-                  color: selected
-                      ? colors.primary.withValues(alpha: 0.14)
-                      : colors.surfaceContainerHighest.withValues(alpha: 0.45),
-                  borderRadius: BorderRadius.circular(18),
-                  child: ListTile(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    leading: _CharacterThumbnail(character: character),
-                    title: Text(
-                      character.displayName,
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    subtitle: Text(
-                      selected
-                          ? 'Currently selected'
-                          : 'Tap to use this character',
-                    ),
-                    trailing: Icon(
-                      selected
-                          ? Icons.check_circle
-                          : Icons.radio_button_unchecked,
-                      color: selected
-                          ? colors.primary
-                          : colors.onSurfaceVariant,
-                    ),
-                    onTap: () => Navigator.of(context).pop(character),
+    final selectedCharacter = characters.firstWhere(
+      (character) => character.id == selectedId,
+      orElse: () => characters.first,
+    );
+
+    return DefaultTabController(
+      length: 2,
+      initialIndex: selectedCharacter.gender == CharacterGender.boy ? 1 : 0,
+      child: SafeArea(
+        top: false,
+        child: FractionallySizedBox(
+          heightFactor: 0.86,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Choose a character',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
                   ),
-                );
-              },
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Switch the character while keeping your lip-sync settings.',
+                  style: TextStyle(color: colors.onSurfaceVariant),
+                ),
+                const SizedBox(height: 16),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: colors.surfaceContainerHighest.withValues(
+                      alpha: 0.38,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: TabBar(
+                    dividerColor: Colors.transparent,
+                    indicator: BoxDecoration(
+                      color: colors.primary.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    indicatorPadding: const EdgeInsets.all(4),
+                    labelColor: colors.primary,
+                    unselectedLabelColor: colors.onSurfaceVariant,
+                    tabs: const [
+                      Tab(icon: Icon(Icons.face_3_outlined), text: 'Girl'),
+                      Tab(icon: Icon(Icons.face_outlined), text: 'Boy'),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: TabBarView(
+                    children: [
+                      _CharacterList(
+                        characters: _charactersFor(CharacterGender.girl),
+                        selectedId: selectedId,
+                        onSelect: (character) =>
+                            Navigator.of(context).pop(character),
+                      ),
+                      _CharacterList(
+                        characters: _charactersFor(CharacterGender.boy),
+                        selectedId: selectedId,
+                        onSelect: (character) =>
+                            Navigator.of(context).pop(character),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
+    );
+  }
+
+  List<CharacterAsset> _charactersFor(CharacterGender gender) => characters
+      .where((character) => character.gender == gender)
+      .toList(growable: false);
+}
+
+class _CharacterList extends StatelessWidget {
+  const _CharacterList({
+    required this.characters,
+    required this.selectedId,
+    required this.onSelect,
+  });
+
+  final List<CharacterAsset> characters;
+  final String selectedId;
+  final ValueChanged<CharacterAsset> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return ListView.separated(
+      padding: const EdgeInsets.only(bottom: 8),
+      primary: false,
+      itemCount: characters.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 8),
+      itemBuilder: (context, index) {
+        final character = characters[index];
+        final selected = character.id == selectedId;
+        return Material(
+          color: selected
+              ? colors.primary.withValues(alpha: 0.14)
+              : colors.surfaceContainerHighest.withValues(alpha: 0.45),
+          borderRadius: BorderRadius.circular(18),
+          child: ListTile(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 6,
+            ),
+            leading: _CharacterThumbnail(character: character),
+            title: Text(
+              character.displayName,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            subtitle: Text(
+              selected ? 'Currently selected' : 'Tap to use this character',
+            ),
+            trailing: Icon(
+              selected ? Icons.check_circle : Icons.radio_button_unchecked,
+              color: selected ? colors.primary : colors.onSurfaceVariant,
+            ),
+            onTap: () => onSelect(character),
+          ),
+        );
+      },
     );
   }
 }
