@@ -66,6 +66,10 @@ flutter:
     - assets/characters/sexy_five/mouth/
     - assets/characters/sexy_one/
     - assets/characters/sexy_one/mouth/
+    - assets/characters/sexy_two/
+    - assets/characters/sexy_two/mouth/
+    - assets/characters/sexy_three/
+    - assets/characters/sexy_three/mouth/
     - assets/characters/sexy_four/
     - assets/characters/sexy_four/mouth/
     - assets/characters/sexy_eight/
@@ -74,6 +78,8 @@ flutter:
     - assets/characters/sexy_nine/mouth/
     - assets/characters/boy_one/
     - assets/characters/boy_one/mouth/
+    - assets/characters/boy_three/
+    - assets/characters/boy_three/mouth/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

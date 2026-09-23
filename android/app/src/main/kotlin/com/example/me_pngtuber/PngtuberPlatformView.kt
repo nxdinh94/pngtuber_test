@@ -51,6 +51,7 @@ class PngtuberPlatformView(
     private val player: ExoPlayer
     private val track: Track
     private val sprites: Map<String, Bitmap>
+    private val baseAsset: String
     private val frameLock = Any()
     private val pendingPresentationTimes = ArrayDeque<Long>()
     private var lastPresentedPtsUs: Long? = null
@@ -60,11 +61,14 @@ class PngtuberPlatformView(
     private var previousState = "closed"
     private var transitionStartedNs = 0L
     private var playing = true
+    private var emotionPlaying = false
+    private var mouthOverlayEnabled = true
     private var playerError: String? = null
 
     init {
         val asset = params["video"] as? String
             ?: error("pngtuber native stage requires a video asset")
+        baseAsset = asset
         val trackAsset = params["track"] as? String
             ?: error("pngtuber native stage requires a track asset")
         track = Track(readAssetText(trackAsset))
@@ -90,12 +94,12 @@ class PngtuberPlatformView(
         )
         channel.setMethodCallHandler(::handleMethodCall)
 
-        val lookupKey = FlutterInjector.instance().flutterLoader().getLookupKeyForAsset(asset)
         player = ExoPlayer.Builder(context)
             .setMediaSourceFactory(DefaultMediaSourceFactory(context))
             .build()
-        player.setMediaItem(MediaItem.fromUri(Uri.parse("asset:///$lookupKey")))
-        player.repeatMode = Player.REPEAT_MODE_ALL
+        mouthOverlayEnabled = usesMouthOverlay(asset)
+        player.setMediaItem(MediaItem.fromUri(assetUri(asset)))
+        player.repeatMode = Player.REPEAT_MODE_OFF
         player.volume = 0f
         player.addListener(this)
         player.setVideoFrameMetadataListener(this)
@@ -128,12 +132,33 @@ class PngtuberPlatformView(
                 if (player.isPlaying) {
                     player.pause()
                     playing = false
+                } else if (player.playbackState == Player.STATE_ENDED && !emotionPlaying) {
+                    // ExoPlayer does not restart an ended one-cycle item from
+                    // play() alone. Treat a paused ended base cycle as a
+                    // request to start the base asset at position zero.
+                    mouthOverlayEnabled = usesMouthOverlay(baseAsset)
+                    playAsset(baseAsset, true)
                 } else {
                     player.play()
                     playing = true
                 }
                 result.success(playing)
                 overlayView.invalidate()
+            }
+            "playBase" -> {
+                emotionPlaying = false
+                mouthOverlayEnabled = usesMouthOverlay(baseAsset)
+                val shouldPlay = call.argument<Boolean>("play") ?: true
+                playAsset(baseAsset, shouldPlay)
+                result.success(shouldPlay)
+            }
+            "playEmotion" -> {
+                val asset = call.argument<String>("video")
+                    ?: return result.error("missing_video", "Emotion video is required", null)
+                emotionPlaying = true
+                mouthOverlayEnabled = usesMouthOverlay(asset)
+                playAsset(asset, true)
+                result.success(true)
             }
             "play" -> {
                 player.play()
@@ -209,14 +234,29 @@ class PngtuberPlatformView(
         playing = isPlaying
     }
 
+    override fun onPlaybackStateChanged(playbackState: Int) {
+        if (playbackState != Player.STATE_ENDED || disposed) return
+        playing = false
+        if (emotionPlaying) {
+            channel.invokeMethod("emotionEnded", null)
+        } else {
+            channel.invokeMethod("baseEnded", null)
+        }
+        overlayView.invalidate()
+    }
+
     override fun onPlayerError(error: PlaybackException) {
         val message = "${error.errorCodeName}: ${error.message ?: "Video playback failed"}"
         playerError = message
+        if (emotionPlaying) {
+            emotionPlaying = false
+            mouthOverlayEnabled = usesMouthOverlay(baseAsset)
+        }
         channel.invokeMethod("error", message)
     }
 
     private fun drawMouth(canvas: Canvas) {
-        if (disposed) return
+        if (disposed || !mouthOverlayEnabled) return
         val quad = track.quadAt(textureViewFrameIndex) ?: return
         val sx = textureView.width.toFloat() / track.width
         val sy = textureView.height.toFloat() / track.height
@@ -261,6 +301,28 @@ class PngtuberPlatformView(
         container.context.assets.open("flutter_assets/$asset").use { input ->
             BitmapFactory.decodeStream(input) ?: error("Unable to decode asset $asset")
         }
+
+    private fun assetUri(asset: String): Uri {
+        val lookupKey = FlutterInjector.instance().flutterLoader().getLookupKeyForAsset(asset)
+        return Uri.parse("asset:///$lookupKey")
+    }
+
+    private fun usesMouthOverlay(asset: String): Boolean =
+        asset.substringAfterLast('/').lowercase().contains("_mouthless")
+
+    private fun playAsset(asset: String, shouldPlay: Boolean) {
+        synchronized(frameLock) {
+            pendingPresentationTimes.clear()
+        }
+        lastPresentedPtsUs = null
+        textureViewFrameIndex = 0
+        playerError = null
+        player.repeatMode = Player.REPEAT_MODE_OFF
+        player.setMediaItem(MediaItem.fromUri(assetUri(asset)))
+        player.prepare()
+        player.playWhenReady = shouldPlay
+        playing = shouldPlay
+    }
 
     private inner class MouthOverlayView(context: Context) : View(context) {
         override fun onDraw(canvas: Canvas) {

@@ -1,2 +1,3 @@
 !video_player_android/lib/
 !video_player_android/lib/**
+.gradle/

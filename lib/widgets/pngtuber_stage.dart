@@ -38,7 +38,10 @@ class PNGTuberStage extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            VideoPlayer(video),
+            VideoPlayer(
+              video,
+              key: ValueKey<String?>(controller.activeVideoAsset),
+            ),
             IgnorePointer(
               child: CustomPaint(
                 painter: MouthSpritePainter(controller: controller),
@@ -59,6 +62,7 @@ class MouthSpritePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (!controller.activeVideoUsesMouthOverlay) return;
     final track = controller.track!;
     final frame = controller.renderFrame;
     if (!frame.valid) return;

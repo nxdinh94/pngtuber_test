@@ -32,10 +32,21 @@ mouth on the same displayed frame. Other platforms retain the Flutter renderer.
 The default bundled video, JSON track and five sprites match the `sexy_seven`
 source set. Additional selectable character sets live under
 `assets/characters/`.
-The catalog currently includes `sexy_five`, `sexy_one`, `sexy_four`,
-`sexy_eight`, `sexy_nine`, and `boy_one` in addition to the default
-`sexy_seven` set.
+The catalog currently includes `sexy_five`, `sexy_one`, `sexy_two`,
+`sexy_three`, `sexy_four`, `sexy_eight`, `sexy_nine`, `boy_one`, and `boy_three`
+in addition to the default `sexy_seven` set.
 The downloaded mouthless source is MPEG-4 Part 2; the bundled loop is re-encoded
 as H.264 (`avc1`) for Android decoder compatibility.
 The JSON already contains calibrated quads (`calibrationApplied: false` prevents
 applying the recorded calibration again).
+
+## Emotional clips
+
+`sexy_eight` includes `cry.mp4` and `laughing.mp4` as complete emotional clips.
+The mouthless base video plays a complete cycle. If the user becomes silent,
+the current base cycle finishes before a random emotional clip starts. When the
+clip ends, the base video restarts from its beginning. This cycle repeats while
+silence continues. If speech resumes during an emotional clip, that clip
+finishes without scheduling another emotion, then playback returns to the
+mouth-overlay base video.
+Filenames containing `_mouthless` use the mouth overlay; complete clips do not.
